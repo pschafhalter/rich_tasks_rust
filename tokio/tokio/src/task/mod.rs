@@ -223,6 +223,7 @@ cfg_rt! {
 
     mod spawn;
     pub use spawn::spawn;
+    pub use spawn::spawn_with_priority;
 
     cfg_rt_multi_thread! {
         pub use blocking::block_in_place;

@@ -392,7 +392,7 @@ cfg_not_sync! {
 pub mod task;
 cfg_rt! {
     pub use task::spawn;
-    //pub use task::spawn_with_priority;
+    pub use task::spawn_with_priority;
 }
 
 cfg_time! {
