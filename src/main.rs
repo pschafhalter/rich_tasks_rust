@@ -3,19 +3,21 @@ use {
         future::{BoxFuture, FutureExt},
         task::{waker_ref, ArcWake},
     },
-    // The timer we wrote in the previous section:
+    // PS: The timer we wrote in the previous section:
     // timer_future::TimerFuture,
     std::{
         cmp::Ordering,
         collections::BinaryHeap,
         future::Future,
         sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError},
+        // JW: mpsc stands for multi-producer single-consumer
         sync::{Arc, Mutex},
         task::{Context, Poll},
     },
 };
+// JW: send means you can transfer across thread boundaries
 
-/// Task executor that receives tasks off of a channel and runs them.
+/// PS: Task executor that receives tasks off of a channel and runs them.
 struct Executor {
     ready_queue: Receiver<Arc<Task>>,
 }
@@ -24,22 +26,27 @@ impl Executor {
     fn run(&self) {
         let mut run_queue = BinaryHeap::new();
         loop {
-            // Populate run queue.
+            // JW: Populate run queue.
             loop {
                 match self.ready_queue.try_recv() {
                     Ok(task) => run_queue.push(task),
                     Err(TryRecvError::Empty) => break,
                     Err(TryRecvError::Disconnected) => return,
                 }
+                // JW: Only exit loop when there's nothing left on the ready_queue
+                // Runtime quits when the ready_queue is disconnected
             }
 
-            // Run the next task.
+            // PS: Run the next task.
             if let Some(task) = run_queue.pop() {
-                // Take the future, and if it has not yet completed (is still Some),
+                // PS: Take the future, and if it has not yet completed (is still Some),
                 // poll it in an attempt to complete it.
                 let mut future_slot = task.future.lock().unwrap();
+                // future_slot should be of type BoxFuture
                 if let Some(mut future) = future_slot.take() {
-                    // Create a `LocalWaker` from the task itself
+                    // PS: Create a `LocalWaker` from the task itself
+                    // JW: TODO: find out about LocalWaker;; https://docs.rs/futures/0.3.5/futures/task/struct.Waker.html
+                    // Probably moves something from wait queue to run queue
                     let waker = waker_ref(&task);
                     let context = &mut Context::from_waker(&*waker);
                     // `BoxFuture<T>` is a type alias for
@@ -47,7 +54,10 @@ impl Executor {
                     // We can get a `Pin<&mut dyn Future + Send + 'static>`
                     // from it by calling the `Pin::as_mut` method.
                     if let Poll::Pending = future.as_mut().poll(context) {
-                        // We're not done processing the future, so put it
+                        // JW: To poll futures they must be pinned; run the future as far as possible
+                        // Alternatively, Poll::Ready if it's not pending and completed
+                        //
+                        // PS: We're not done processing the future, so put it
                         // back in its task to be run again in the future.
                         *future_slot = Some(future);
                     }
@@ -61,6 +71,7 @@ impl Executor {
 #[derive(Clone)]
 struct Spawner {
     task_sender: SyncSender<Arc<Task>>,
+    // JW: is clone-able
 }
 
 impl Spawner {
@@ -123,6 +134,10 @@ impl PartialEq for Task {
 }
 
 impl Eq for Task {}
+
+//A thread-safe reference-counting pointer. 'Arc' stands for 'Atomically Reference Counted'.
+// Task imps ArcWake which means type wrapped in arc can be converted to a waker
+// waker can indicate to the executor that it's ready to be polled again.
 
 impl ArcWake for Task {
     fn wake_by_ref(arc_self: &Arc<Self>) {
