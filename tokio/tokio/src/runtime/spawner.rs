@@ -42,5 +42,21 @@ cfg_rt! {
                 Spawner::ThreadPool(spawner) => spawner.spawn(future),
             }
         }
+
+    pub fn spawn_with_priority<F>(&self, future: F, priority: u8) -> JoinHandle<F::Output>
+        where
+            F: Future + Send + 'static,
+            F::Output: Send + 'static,
+        {
+
+            println! ("priority {}", priority);
+            match self {
+                #[cfg(feature = "rt")]
+                Spawner::Basic(spawner) => spawner.spawn(future),
+                #[cfg(feature = "rt-multi-thread")]
+                Spawner::ThreadPool(spawner) => spawner.spawn(future),
+
+            }
+        }
     }
 }

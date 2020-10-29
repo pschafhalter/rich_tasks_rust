@@ -132,4 +132,15 @@ cfg_rt! {
         let task = crate::util::trace::task(task, "task");
         spawn_handle.spawn(task)
     }
+
+    pub fn spawn_with_priority<T>(task: T) -> JoinHandle<T::Output>
+    where
+        T: Future + Send + 'static,
+        T::Output: Send + 'static,
+    {
+        let spawn_handle = runtime::context::spawn_handle()
+        .expect("must be called from the context of Tokio runtime configured with either `basic_scheduler` or `threaded_scheduler`");
+        let task = crate::util::trace::task(task, "task");
+        spawn_handle.spawn_with_priority(task, 0)
+    }
 }
