@@ -13,5 +13,8 @@
 ``` 
   cargo build --all-features
   cargo check --all-features
-  cargo test udp_prio
+  cargo test udp_prio -- --nocapture
 ```
+- edited mod.rs and lib.rs to make the new fn visible 
+- TODO: currently it compiles but I can't get nocapture to work
+
