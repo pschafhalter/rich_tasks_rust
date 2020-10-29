@@ -10,8 +10,8 @@ const MSG_LEN: usize = MSG.len();
 
 
 #[tokio::test]
-async fn split() -> std::io::Result<()> {
-    println! ("hi");
+async fn udp_prio() -> std::io::Result<()> {
+    eprintln! ("Starting UDP Prio");
     let socket = UdpSocket::bind("127.0.0.1:0").await?;
     let s = Arc::new(socket);
     let r = s.clone();
