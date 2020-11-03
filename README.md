@@ -1,7 +1,7 @@
 10/28/20
 
 - We walked through and commented rich_task_rust
-  - Keys to note: Pin type pins the address of the objet
+  - Keys to note: Pin type pins the address of the object
   - BoxedFuture just means Pinned
   - Algo: while the ready_queue is not empty and not disconnected move stuff to
     the run_queue; otherwise run thing on queue until they're blocked; repeat
@@ -17,3 +17,11 @@
 ```
 - edited mod.rs and lib.rs to make the new fn visible 
 
+11/03/20
+
+- Abortable futures: https://docs.rs/futures/0.3.7/futures/future/struct.Abortable.html
+Questions: 
+- What do about GPU not being abortable?
+- Can all scheduling decisions be reduced to priorities?
+- How does the Timestamps work (what are coordinates and when are they set)?
+- 
