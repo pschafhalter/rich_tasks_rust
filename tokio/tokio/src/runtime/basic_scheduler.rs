@@ -53,6 +53,7 @@ pub(crate) struct Spawner {
     shared: Arc<Shared>,
 }
 
+// EL: this looks like where we have the task queues held ?
 struct Tasks {
     /// Collection of all active tasks spawned onto this executor.
     owned: LinkedList<Task<Arc<Shared>>, <Task<Arc<Shared>> as Link>::Target>,
@@ -134,6 +135,7 @@ impl<P: Park> BasicScheduler<P> {
         self.spawner.spawn(future)
     }
 
+    // EL: what is parking?
     pub(crate) fn block_on<F: Future>(&self, future: F) -> F::Output {
         pin!(future);
 
@@ -179,6 +181,7 @@ impl<P: Park> BasicScheduler<P> {
     }
 }
 
+// EL: look more into this "park" thing and how it relates to running tasks (+ ticks)
 impl<P: Park> Inner<P> {
     /// Block on the future provided and drive the runtime's driver.
     fn block_on<F: Future>(&mut self, future: F) -> F::Output {
@@ -213,6 +216,7 @@ impl<P: Park> Inner<P> {
                             .or_else(|| scheduler.spawner.pop())
                     };
 
+                    // EL: this seems like an interesting place to look
                     match next {
                         Some(task) => crate::coop::budget(|| task.run()),
                         None => {
@@ -373,11 +377,16 @@ impl Schedule for Arc<Shared> {
         })
     }
 
+    // EL: this schedules for anything with Arc<Shared>
+    // EL: looks like it just pushes onto a queue -- we need to see how these tasks come off of the queue as well
     fn schedule(&self, task: task::Notified<Self>) {
         CURRENT.with(|maybe_cx| match maybe_cx {
+            // EL: if closure what?? thread-local context?
             Some(cx) if Arc::ptr_eq(self, &cx.shared) => {
+                // we are looking at the queue in the context and pushing the task onto it
                 cx.tasks.borrow_mut().queue.push_back(task);
             }
+            // EL: otherwise we just push it onto this queue (shared between threads)
             _ => {
                 self.queue.lock().push_back(task);
                 self.unpark.unpark();

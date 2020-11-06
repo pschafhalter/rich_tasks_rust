@@ -25,3 +25,9 @@ Questions:
 - Can all scheduling decisions be reduced to priorities?
 - How does the Timestamps work (what are coordinates and when are they set)?
 - 
+
+11/05/20 - ??? (Eric notes on scheduling in Tokio)
+- Looking in basic_scheduler.rs to understand what is going on
+- They seem to have thread specific queues and a shared queue as well
+- I need to look at how these queues are used (looks like FIFO lol)
+- In addition how the scheduling actually happens (task/mod.rs? or if basic_scheduler is a red herring)
