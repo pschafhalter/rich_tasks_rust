@@ -31,3 +31,8 @@ Questions:
 - They seem to have thread specific queues and a shared queue as well
 - I need to look at how these queues are used (looks like FIFO lol)
 - In addition how the scheduling actually happens (task/mod.rs? or if basic_scheduler is a red herring)
+
+11/09/2020 (Eric notes on Abortable Future)
+- successfully adapted tasks to use AbortableFutures (change ouput signature to match Result<(), Aborted>)
+- tested scheduling abortables with priority and aborting them
+- need to test aborting mid-execution with longer-running tasks than prints LOL
