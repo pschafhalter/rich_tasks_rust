@@ -2,6 +2,7 @@ use {
     futures::{
         future::{BoxFuture, FutureExt},
         task::{waker_ref, ArcWake},
+        future::{Abortable, AbortHandle, Aborted},
     },
     // PS: The timer we wrote in the previous section:
     // timer_future::TimerFuture,
@@ -13,6 +14,7 @@ use {
         // JW: mpsc stands for multi-producer single-consumer
         sync::{Arc, Mutex},
         task::{Context, Poll},
+        result::Result,
     },
 };
 // JW: send means you can transfer across thread boundaries
@@ -75,7 +77,7 @@ struct Spawner {
 }
 
 impl Spawner {
-    fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
+    fn spawn(&self, future: impl Future<Output = Result<(), Aborted>> + 'static + Send) {
         let future = future.boxed();
         let task = Arc::new(Task {
             future: Mutex::new(Some(future)),
@@ -85,7 +87,7 @@ impl Spawner {
         self.task_sender.send(task).expect("too many tasks queued");
     }
 
-    fn spawn_with_priority(&self, future: impl Future<Output = ()> + 'static + Send, priority: u8) {
+    fn spawn_abortable_with_priority(&self, future: impl Future<Output = Result<(), Aborted>> + 'static + Send, priority: u8) {
         let future = future.boxed();
         let task = Arc::new(Task {
             future: Mutex::new(Some(future)),
@@ -105,7 +107,7 @@ struct Task {
     /// enough to know that `future` is only mutated from one thread,
     /// so we need to use the `Mutex` to prove thread-safety. A production
     /// executor would not need this, and could use `UnsafeCell` instead.
-    future: Mutex<Option<BoxFuture<'static, ()>>>,
+    future: Mutex<Option<BoxFuture<'static, Result<(), Aborted>>>>,
 
     /// Tasks with smaller priorities are executed first.
     priority: u8,
@@ -163,17 +165,26 @@ fn new_executor_and_spawner() -> (Executor, Spawner) {
 fn main() {
     let (executor, spawner) = new_executor_and_spawner();
 
-    // Spawn a task to print before and after waiting on a timer.
-    // spawner.spawn(async {
-    //     println!("howdy!");
-    //     // Wait for our timer future to complete after two seconds.
-    //     // TimerFuture::new(Duration::new(2, 0)).await;
-    //     println!("done!");
-    // });
+    // Spawn an abortable task (WORKS)
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    let future = Abortable::new(async { println!("blah") }, abort_registration);
+    spawner.spawn(future);
+    abort_handle.abort();
 
-    spawner.spawn_with_priority(async { println!("three") }, 3);
-    spawner.spawn_with_priority(async { println!("one") }, 1);
-    spawner.spawn_with_priority(async { println!("two") }, 2);
+    // duplicate code soz; testing priority
+    let (_abort_handle1, abort_registration) = AbortHandle::new_pair();
+    let future1 = Abortable::new(async { println!("p1 task") }, abort_registration);
+    let (abort_handle2, abort_registration) = AbortHandle::new_pair();
+    let future2 = Abortable::new(async { println!("p2 task") }, abort_registration);
+    let (_abort_handle3, abort_registration) = AbortHandle::new_pair();
+    let future3 = Abortable::new(async { println!("p3 task") }, abort_registration);
+    let (_abort_handle4, abort_registration) = AbortHandle::new_pair();
+    let future4 = Abortable::new(async { println!("p4 task") }, abort_registration);
+    spawner.spawn_abortable_with_priority(future2, 2);
+    spawner.spawn_abortable_with_priority(future1, 1);
+    spawner.spawn_abortable_with_priority(future4, 4);
+    spawner.spawn_abortable_with_priority(future3, 3);
+    abort_handle2.abort();
 
     // Drop the spawner so that our executor knows it is finished and won't
     // receive more incoming tasks to run.
