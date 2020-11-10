@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 futures = "0.3"
+tokio = { version = "0.2.22", features = ["sync", "tcp", "io-util", "rt-core", "rt-threaded", "time", "macros", "stream", "blocking"] }
