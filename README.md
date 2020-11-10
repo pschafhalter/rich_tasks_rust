@@ -24,7 +24,6 @@ Questions:
 - What do about GPU not being abortable?
 - Can all scheduling decisions be reduced to priorities?
 - How does the Timestamps work (what are coordinates and when are they set)?
-- 
 
 11/05/20 - ??? (Eric notes on scheduling in Tokio)
 - Looking in basic_scheduler.rs to understand what is going on
@@ -36,3 +35,11 @@ Questions:
 - successfully adapted tasks to use AbortableFutures (change ouput signature to match Result<(), Aborted>)
 - tested scheduling abortables with priority and aborting them
 - need to test aborting mid-execution with longer-running tasks than prints LOL
+
+11/10/2020 (Justin notes on integration tests)
+- Refactor codebase and add integration tests
+  - Key test is preemptable_by_lower which demonstrates higher priority task
+    pending and then being aborted by lower priority task.
+- Add a `spawn_preemptable` that takes in a future returns an AbortHandle
+- TODO: Get spawn API to match with the tokio API
+- TODO: Learn how to do conditional pending
