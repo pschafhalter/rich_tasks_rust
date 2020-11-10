@@ -1,15 +1,28 @@
-use {
-    futures::{
-        future::{Abortable, AbortHandle},
-    },
-    // PS: The timer we wrote in the previous section:
-    // timer_future::TimerFuture,
-};
+//use {
+//    futures::{
+//        future::{BoxFuture, FutureExt},
+//        task::{waker_ref, ArcWake},
+//        future::{Abortable, AbortHandle, Aborted},
+//    },
+//    // PS: The timer we wrote in the previous section:
+//    // timer_future::TimerFuture,
+//    std::{
+//        cmp::Ordering,
+//        collections::BinaryHeap,
+//        future::Future,
+//        sync::mpsc::{sync_channel, Receiver, SyncSender, TryRecvError},
+//        // JW: mpsc stands for multi-producer single-consumer
+//        sync::{Arc, Mutex},
+//        task::{Context, Poll},
+//        result::Result,
+//    },
+//};
+use futures::future::{Abortable,AbortHandle};
+use rich_tasks;
 // JW: send means you can transfer across thread boundaries
 
-/// PS: Task executor that receives tasks off of a channel and runs them.
-use rich_tasks;
-fn main() {
+#[test]
+fn abortable() {
     let (executor, spawner) = rich_tasks::new_executor_and_spawner();
 
     // Spawn an abortable task (WORKS)
