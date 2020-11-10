@@ -2,7 +2,7 @@ use {
     futures::{
         future::{BoxFuture, FutureExt},
         task::{waker_ref, ArcWake},
-        future::{Aborted},
+        future::{Abortable, AbortHandle,Aborted},
     },
     // PS: The timer we wrote in the previous section:
     // timer_future::TimerFuture,
@@ -87,7 +87,11 @@ impl Spawner {
         self.task_sender.send(task).expect("too many tasks queued");
     }
 
-    pub fn spawn_abortable_with_priority(&self, future: impl Future<Output = Result<(), Aborted>> + 'static + Send, priority: u8) {
+    pub fn spawn_abortable_with_priority<F>(&self, future:F, priority: u8) 
+    where F : Future<Output =Result<(), Aborted>>+ Send + 'static
+    //where F : Future + Send + 'static,
+    //      F::Output: Send + 'static
+    {
         let future = future.boxed();
         let task = Arc::new(Task {
             future: Mutex::new(Some(future)),
@@ -96,6 +100,15 @@ impl Spawner {
         });
         self.task_sender.send(task).expect("too many tasks queued");
     }
+    pub fn spawn_preemptable<F>(&self, future:F, priority:u8) -> AbortHandle
+    where F : Future<Output = ()> + Send + 'static
+    {
+        let (abort_handle,abort_registration) = AbortHandle::new_pair();
+        let abortable_future= Abortable::new(future,abort_registration);
+        self.spawn_abortable_with_priority(abortable_future,priority);
+        abort_handle
+    }
+
 }
 
 /// A future that can reschedule itself to be polled by an `Executor`.

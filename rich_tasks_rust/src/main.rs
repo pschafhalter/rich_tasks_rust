@@ -8,7 +8,8 @@ use {
 // JW: send means you can transfer across thread boundaries
 
 /// PS: Task executor that receives tasks off of a channel and runs them.
-use rich_tasks;
+
+
 fn main() {
     let (executor, spawner) = rich_tasks::new_executor_and_spawner();
 

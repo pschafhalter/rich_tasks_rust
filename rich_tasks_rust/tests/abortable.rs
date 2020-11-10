@@ -18,18 +18,110 @@
 //    },
 //};
 use futures::future::{Abortable,AbortHandle};
+
 use rich_tasks;
 // JW: send means you can transfer across thread boundaries
+struct S {
+    i: i32,
+}
+
+impl S {
+    fn new(i: i32) -> Self {
+        println!("Creating S {}", i);
+        S { i }
+    }
+}
+
+impl Drop for S {
+    fn drop(&mut self) {
+        println!("Dropping S {}", self.i);
+    }
+}
 
 #[test]
-fn abortable() {
+fn try_aborting_basic(){
+    println!("Starting high priority preemption");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    let s = S::new(7);
+    let future = Abortable::new(async move { 
+        println!("Finished with {}", s.i);
+      }, abort_registration);
+    spawner.spawn(future);
+    abort_handle.abort();
+
+    drop(spawner);
+    executor.run();
+}
+
+#[test]
+fn aborted_by_higher(){
+    use futures::future;
+    println!("Starting high priority preemption");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    let future = Abortable::new(async { 
+        let s = S::new(7);
+        for x in 0..1000 {
+            if x % 100 == 0 { 
+                println!("{}", x); 
+            } 
+            if x == 500{
+                println!("About to sleep forever");
+                let future = future::pending();
+                let () = future.await; //triggering infinite pending
+            }
+        };
+        println!("Finished with {}", s.i);
+      }, abort_registration);
+    spawner.spawn_abortable_with_priority(future,20); 
+    
+    let _ = spawner.spawn_preemptable(async move {
+        println!("before abort");
+        abort_handle.abort();
+        println!("after abort");
+    },10);
+    drop(spawner);
+    executor.run();
+}
+
+#[test]
+fn aborted_by_lower(){
+    use futures::future;
+    println!("Starting high priority preemption");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+    let future = Abortable::new(async { 
+        let s = S::new(7);
+        for x in 0..1000 {
+            if x % 100 == 0 { 
+                println!("{}", x); 
+            } 
+            if x == 500{
+                println!("About to sleep forever");
+                let future = future::pending();
+                let () = future.await; //triggering infinite pending
+            }
+        };
+        println!("Finished with {}", s.i);
+      }, abort_registration);
+    spawner.spawn_abortable_with_priority(future,20); 
+    
+    let _ = spawner.spawn_preemptable(async move {
+        println!("before abort");
+        abort_handle.abort();
+        println!("after abort");
+    },30);
+    drop(spawner);
+    executor.run();
+}
+
+#[test]
+fn spawn_abortable() {
     let (executor, spawner) = rich_tasks::new_executor_and_spawner();
 
     // Spawn an abortable task (WORKS)
-    let (abort_handle, abort_registration) = AbortHandle::new_pair();
-    let future = Abortable::new(async { println!("blah") }, abort_registration);
-    spawner.spawn(future);
-    abort_handle.abort();
+
 
     // duplicate code soz; testing priority
     let (_abort_handle1, abort_registration) = AbortHandle::new_pair();
@@ -52,5 +144,50 @@ fn abortable() {
 
     // Run the executor until the task queue is empty.
     // This will print "howdy!", pause, and then print "done!".
+    executor.run();
+}
+
+#[test]
+fn try_preemptable_basic(){
+    println!("Starting high priority preemption");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let s = S::new(7);
+    let future = async move { 
+        println!("Finished with {}", s.i);
+      };
+    let abort_handle = spawner.spawn_preemptable(future,10);
+    abort_handle.abort();
+
+    drop(spawner);
+    executor.run();
+}
+
+#[test]
+fn preemptable_by_lower(){
+    use futures::future;
+    println!("Starting high priority preemption");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let future = async { 
+        let s = S::new(7);
+        for x in 0..1000 {
+            if x % 100 == 0 { 
+                println!("{}", x); 
+            } 
+            if x == 500{
+                println!("About to sleep forever");
+                let future = future::pending();
+                let () = future.await; //triggering infinite pending
+            }
+        };
+        println!("Finished with {}", s.i);
+      };
+    let abort_handle = spawner.spawn_preemptable(future,20); 
+    
+    let _ = spawner.spawn_preemptable(async move {
+        println!("before abort");
+        abort_handle.abort();
+        println!("after abort");
+    },30);
+    drop(spawner);
     executor.run();
 }
