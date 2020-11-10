@@ -64,22 +64,22 @@ fn aborted_by_higher(){
         let s = S::new(7);
         for x in 0..1000 {
             if x % 100 == 0 { 
-                println!("{}", x); 
+                println!("THREAD1: {}", x); 
             } 
             if x == 500{
-                println!("About to sleep forever");
+                println!("THREAD1: About to sleep forever");
                 let future = future::pending();
                 let () = future.await; //triggering infinite pending
             }
         };
-        println!("Finished with {}", s.i);
+        println!("THREAD1: Finished with {}", s.i);
       }, abort_registration);
     spawner.spawn_abortable_with_priority(future,20); 
     
     let _ = spawner.spawn_preemptable(async move {
-        println!("before abort");
+        println!("THREAD2: before abort");
         abort_handle.abort();
-        println!("after abort");
+        println!("THREAD2: after abort");
     },10);
     drop(spawner);
     executor.run();
@@ -95,22 +95,22 @@ fn aborted_by_lower(){
         let s = S::new(7);
         for x in 0..1000 {
             if x % 100 == 0 { 
-                println!("{}", x); 
+                println!("THREAD1: {}", x); 
             } 
             if x == 500{
-                println!("About to sleep forever");
+                println!("THREAD1: About to sleep forever");
                 let future = future::pending();
                 let () = future.await; //triggering infinite pending
             }
         };
-        println!("Finished with {}", s.i);
+        println!("THREAD1: Finished with {}", s.i);
       }, abort_registration);
     spawner.spawn_abortable_with_priority(future,20); 
     
     let _ = spawner.spawn_preemptable(async move {
-        println!("before abort");
+        println!("THREAD2: before abort");
         abort_handle.abort();
-        println!("after abort");
+        println!("THREAD2: after abort");
     },30);
     drop(spawner);
     executor.run();
@@ -171,22 +171,54 @@ fn preemptable_by_lower(){
         let s = S::new(7);
         for x in 0..1000 {
             if x % 100 == 0 { 
-                println!("{}", x); 
+                println!("THREAD1: {}", x); 
             } 
             if x == 500{
-                println!("About to sleep forever");
+                println!("THREAD1: About to sleep forever");
                 let future = future::pending();
                 let () = future.await; //triggering infinite pending
             }
         };
-        println!("Finished with {}", s.i);
+        println!("THREAD1: Finished with {}", s.i);
       };
     let abort_handle = spawner.spawn_preemptable(future,20); 
     
     let _ = spawner.spawn_preemptable(async move {
-        println!("before abort");
+        println!("THREAD2: before abort");
         abort_handle.abort();
-        println!("after abort");
+        println!("THREAD2: after abort");
+    },30);
+    drop(spawner);
+    executor.run();
+}
+
+
+
+#[test]
+fn sleep_test(){
+    use std::{thread, time};
+    println!("Starting sleep_test");
+    let (executor, spawner) = rich_tasks::new_executor_and_spawner();
+    let ten_millis = time::Duration::from_millis(10);
+    let future = async move{ 
+        let s = S::new(7);
+        for x in 0..1000 {
+            if x % 100 == 0 { 
+                println!("THREAD1: {}", x); 
+            } 
+            if x == 500{
+                println!("THREAD1: About to sleep for 10ms");
+                thread::sleep(ten_millis);
+            }
+        };
+        println!("THREAD1: Finished with {}", s.i);
+      };
+    let abort_handle = spawner.spawn_preemptable(future,20); 
+    
+    let _ = spawner.spawn_preemptable(async move {
+        println!("THREAD2: before abort");
+        abort_handle.abort();
+        println!("THREAD2: after abort");
     },30);
     drop(spawner);
     executor.run();
