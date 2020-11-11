@@ -39,16 +39,15 @@ impl Drop for S {
 }
 
 #[test]
-fn try_aborting_basic(){
+fn basic_spawn(){
     println!("Starting high priority preemption");
     let (executor, spawner) = rich_tasks::new_executor_and_spawner();
-    let (abort_handle, abort_registration) = AbortHandle::new_pair();
+
     let s = S::new(7);
-    let future = Abortable::new(async move { 
+    let future = async move { 
         println!("Finished with {}", s.i);
-      }, abort_registration);
+      };
     spawner.spawn(future);
-    abort_handle.abort();
 
     drop(spawner);
     executor.run();

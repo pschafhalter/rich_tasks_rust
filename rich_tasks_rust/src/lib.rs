@@ -84,14 +84,10 @@ pub struct Spawner {
 }
 
 impl Spawner {
-    pub fn spawn(&self, future: impl Future<Output = Result<(), Aborted>> + 'static + Send) {
-        let future = future.boxed();
-        let task = Arc::new(Task {
-            future: Mutex::new(Some(future)),
-            priority: 20,
-            task_sender: self.task_sender.clone(),
-        });
-        self.task_sender.send(task).expect("too many tasks queued");
+    pub fn spawn<F>(&self, future:F) 
+    where F : Future<Output = ()> + Send + 'static
+    {
+        self.spawn_preemptable(future,20);
     }
 
     pub fn spawn_abortable_with_priority<F>(&self, future:F, priority: u8) 

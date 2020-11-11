@@ -16,7 +16,7 @@ fn main() {
     // Spawn an abortable task (WORKS)
     let (abort_handle, abort_registration) = AbortHandle::new_pair();
     let future = Abortable::new(async { println!("blah") }, abort_registration);
-    spawner.spawn(future);
+    spawner.spawn_abortable_with_priority(future,20);
     abort_handle.abort();
 
     // duplicate code soz; testing priority
